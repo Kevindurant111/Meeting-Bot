@@ -13,17 +13,18 @@ client = Client(
     project_id=config['API_KEYS']['project_id']
 )
 
-# 创建转录任务
-create_task_response = client.easyllm.speech_to_text.create(
-    easyllm_id=config['API_KEYS']['easyllm_id'],
-    audio_url="https://github.com/Kevindurant111/Meeting-Bot/releases/download/v1.0.0/demo.mp4",
-)
+# # 创建转录任务
+# create_task_response = client.easyllm.speech_to_text.create(
+#     easyllm_id=config['API_KEYS']['easyllm_id'],
+#     audio_url="https://github.com/Kevindurant111/Meeting-Bot/releases/download/v1.0.0/demo.mp3",
+# )
 
-print(create_task_response.task_id)
-task_id = create_task_response.task_id
+# print(create_task_response.task_id)
+# task_id = create_task_response.task_id
 
+task_id = 11299831633
 # 等待任务完成
-MAX_RETRIES = 50  # 最大重试次数
+MAX_RETRIES = 1000  # 最大重试次数
 WAIT_INTERVAL = 5  # 每次等待的间隔时间（秒）
 retries = 0
 
@@ -42,3 +43,21 @@ elif retries >= MAX_RETRIES:
     print("任务超时，未完成。")
 else:
     print(f"任务未成功，当前状态为：{task.status}")
+
+
+# 初始化客户端
+client = Client(
+    api_key=config['API_KEYS']['meeting_minutes_api_key'],
+    project_id=config['API_KEYS']['meeting_minutes_project_id']
+)
+
+# 调用接口
+response = client.easyllm.meeting_minutes.create(
+    easyllm_id=config['API_KEYS']['meeting_minutes_easyllm_id'],
+    meeting_transcript=task.result
+)
+
+# 打印输出
+print(response.choices[0].message.content)
+
+
