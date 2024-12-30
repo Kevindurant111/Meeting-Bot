@@ -16,7 +16,7 @@ client = Client(
 # 创建转录任务
 create_task_response = client.easyllm.speech_to_text.create(
     easyllm_id=config['API_KEYS']['easyllm_id'],
-    audio_url="https://github.com/Kevindurant111/Meeting-Bot/blob/main/demo.mp4",
+    audio_url="https://github.com/Kevindurant111/Meeting-Bot/releases/download/v1.0.0/demo.mp4",
 )
 
 print(create_task_response.task_id)
