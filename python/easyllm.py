@@ -139,7 +139,8 @@ if __name__ == "__main__":
     processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
     
     # 处理新的音频文件
-    audio_url = "https://github.com/Kevindurant111/Meeting-Bot/releases/download/v1.0.0/demo.mp3"
+    # audio_url = "https://github.com/Kevindurant111/Meeting-Bot/releases/download/v1.0.0/demo.mp3"
+    audio_url = "http://ap-ai01.oss-cn-beijing.aliyuncs.com/demo.wav?OSSAccessKeyId=LTAI5tA7t6xe64Y8PdgPmwtg&Expires=1735634405&Signature=aGaYQ0kaNOy37%2BmJM0tYgMLKYH4%3D"
     result = processor.process_meeting_audio(audio_url)
 
     if result:
