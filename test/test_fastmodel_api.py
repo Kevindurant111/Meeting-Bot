@@ -1,3 +1,4 @@
+import requests
 from fastmodels import Client
 import configparser
 import time
