@@ -1,8 +1,8 @@
-import requests
-from fastmodels import Client
 import configparser
 import time
+
 import oss2
+from fastmodels import Client
 
 # 等待任务完成
 MAX_RETRIES = 50  # 最大重试次数

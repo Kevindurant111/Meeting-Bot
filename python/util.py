@@ -18,8 +18,9 @@ logging.basicConfig(
     level=logging.DEBUG,  # 设置日志级别
     format='%(asctime)s - %(levelname)s - %(message)s',  # 日志格式
     handlers=[
-        logging.FileHandler(LOG_PATH),  # 将日志输出到文件
+        logging.FileHandler(LOG_PATH, encoding='utf-8'),
         logging.StreamHandler()  # 也可以输出到控制台
+
     ]
 )
 
