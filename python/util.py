@@ -6,7 +6,7 @@ import logging
 import os
 
 # 配置日志文件路径
-LOG_DIR = 'logs'  # 日志目录
+LOG_DIR = '../logs'  # 日志目录
 LOG_FILE = 'app.log'  # 日志文件名
 LOG_PATH = os.path.join(LOG_DIR, LOG_FILE)
 
