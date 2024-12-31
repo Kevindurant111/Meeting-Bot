@@ -30,7 +30,7 @@ def upload_form():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>文件上传</title>
+        <title>会议纪要生成工具</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <style>
             .required:after {
@@ -69,7 +69,7 @@ def upload_form():
         <div class="container mt-5">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="card-title text-center">文件上传</h3>
+                    <h3 class="card-title text-center">会议纪要生成工具</h3>
                 </div>
                 <div class="card-body">
                     <form method="post" action="/upload" enctype="multipart/form-data" onsubmit="return validateFile()">
@@ -88,7 +88,7 @@ def upload_form():
                             <label for="email" class="form-label required">邮箱地址：</label>
                             <input class="form-control" type="email" id="email" name="email" required>
                             <div class="form-text text-muted mt-2">
-                                请提供您的邮箱地址，以便我们联系您。
+                                我们会将会议纪要文件发送到您的邮箱。
                             </div>
                         </div>
                         <div class="mb-3">
