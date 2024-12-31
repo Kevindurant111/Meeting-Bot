@@ -1,12 +1,13 @@
 import configparser
 import time
-import logging
-from fastmodels import Client
 from datetime import datetime
+
+from fastmodels import Client
+from util import logger
 
 
 class SpeechToTextMeetingProcessor:
-    def __init__(self, config_path, log_file="../logs/transcription_log.txt"):
+    def __init__(self, config_path):
         # 加载配置
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
@@ -24,13 +25,13 @@ class SpeechToTextMeetingProcessor:
         )
 
         # 设置日志记录
-        logging.basicConfig(
-            filename=log_file,
-            level=logging.INFO,
-            format="%(asctime)s - %(message)s"
-        )
-        self.logger = logging.getLogger()
-        self.log_file = log_file
+        # logging.basicConfig(
+        #     filename=log_file,
+        #     level=logging.INFO,
+        #     format="%(asctime)s - %(message)s"
+        # )
+        # logger = logging.getLogger()
+        # self.log_file = log_file
 
     def create_transcription_task(self, audio_url):
         """
@@ -41,7 +42,7 @@ class SpeechToTextMeetingProcessor:
             audio_url=audio_url
         )
         task_id = response.task_id
-        self.logger.info(f"Task created. Task ID: {task_id}, Start Time: {datetime.now()}")
+        logger.info(f"Task created. Task ID: {task_id}, Start Time: {datetime.now()}")
         return task_id
 
     def wait_for_transcription(self, task_id, max_retries=1000, wait_interval=5):
@@ -56,19 +57,19 @@ class SpeechToTextMeetingProcessor:
             print(f"当前状态：{task.status}")
             if task.status != "waiting":
                 end_time = datetime.now()
-                self.logger.info(
+                logger.info(
                     f"Task completed. Task ID: {task_id}, Start Time: {start_time}, "
                     f"End Time: {end_time}, Status: {task.status}"
                 )
                 if task.status == "success":
-                    self.logger.info(f"Transcription Result: {task.result}")
+                    logger.info(f"Transcription Result: {task.result}")
                 return task
             retries += 1
             time.sleep(wait_interval)
 
         # 超时未完成
         end_time = datetime.now()
-        self.logger.info(
+        logger.info(
             f"Task timeout. Task ID: {task_id}, Start Time: {start_time}, "
             f"End Time: {end_time}, Status: timeout"
         )
@@ -137,7 +138,7 @@ class SpeechToTextMeetingProcessor:
 # 使用示例
 if __name__ == "__main__":
     processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
-    
+
     # 处理新的音频文件
     # audio_url = "https://github.com/Kevindurant111/Meeting-Bot/releases/download/v1.0.0/demo.mp3"
     audio_url = "http://ap-ai01.oss-cn-beijing.aliyuncs.com/demo.wav?OSSAccessKeyId=LTAI5tA7t6xe64Y8PdgPmwtg&Expires=1735634405&Signature=aGaYQ0kaNOy37%2BmJM0tYgMLKYH4%3D"

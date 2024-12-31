@@ -1,5 +1,7 @@
 from flask import Flask, request, render_template_string, redirect, url_for
 import os
+import uuid  # 用于生成唯一的taskid
+from util import logger
 
 app = Flask(__name__)
 
@@ -11,11 +13,12 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # 支持的文件格式
 ALLOWED_EXTENSIONS = {'wav', 'mp3', 'm4a', 'flv', 'mp4', 'wma'}
 
+# 全局字典存储上传信息
+uploaded_files = {}
 
 # 检查文件是否为允许的格式
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 # 首页：显示文件上传表单
 @app.route('/')
@@ -28,10 +31,14 @@ def upload_form():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>文件上传</title>
-        <!-- 引入 Bootstrap -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            .required:after {
+                content: " *";
+                color: red;
+            }
+        </style>
         <script>
-            // 在客户端检查文件格式
             function validateFile() {
                 const allowedExtensions = ['wav', 'mp3', 'm4a', 'flv', 'mp4', 'wma'];
                 const fileInput = document.getElementById('file');
@@ -39,25 +46,22 @@ def upload_form():
                 const fileExtension = filePath.split('.').pop().toLowerCase();
 
                 if (!allowedExtensions.includes(fileExtension)) {
-                    // 显示模态框提示不支持的文件格式
                     const modal = new bootstrap.Modal(document.getElementById('errorModal'));
                     modal.show();
-                    fileInput.value = ''; // 清空文件输入框
+                    fileInput.value = '';
                     return false;
                 }
                 return true;
             }
 
-            // 清空文件输入框
             function clearFileInput() {
                 document.getElementById('file').value = '';
             }
 
-            // 清除 URL 参数
             function clearUrlParams() {
                 const url = new URL(window.location.href);
-                url.searchParams.delete('success'); // 删除 success 参数
-                window.history.replaceState({}, document.title, url); // 更新浏览器地址栏
+                url.searchParams.delete('success');
+                window.history.replaceState({}, document.title, url);
             }
         </script>
     </head>
@@ -70,10 +74,35 @@ def upload_form():
                 <div class="card-body">
                     <form method="post" action="/upload" enctype="multipart/form-data" onsubmit="return validateFile()">
                         <div class="mb-3">
-                            <label for="file" class="form-label">选择文件：</label>
+                            <label for="taskid" class="form-label required">任务ID：</label>
+                            <input class="form-control" type="text" id="taskid" name="taskid" value="{{ taskid }}" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="file" class="form-label required">选择文件：</label>
                             <input class="form-control" type="file" id="file" name="file" required>
                             <div class="form-text text-muted mt-2">
                                 支持的文件格式：<strong>wav, mp3, m4a, flv, mp4, wma</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label required">邮箱地址：</label>
+                            <input class="form-control" type="email" id="email" name="email" required>
+                            <div class="form-text text-muted mt-2">
+                                请提供您的邮箱地址，以便我们联系您。
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="participants" class="form-label">参会人：</label>
+                            <input class="form-control" type="text" id="participants" name="participants" placeholder="多个参会人用逗号分隔">
+                            <div class="form-text text-muted mt-2">
+                                请用逗号分隔多个参会人。
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="subject" class="form-label required">会议主题：</label>
+                            <input class="form-control" type="text" id="subject" name="subject" required>
+                            <div class="form-text text-muted mt-2">
+                                请提供会议主题。
                             </div>
                         </div>
                         <div class="d-grid">
@@ -108,12 +137,9 @@ def upload_form():
         <!-- 模态框：成功提示 -->
         {% if success %}
         <script>
-            // 显示成功模态框
             window.onload = function() {
                 const successModal = new bootstrap.Modal(document.getElementById('successModal'));
                 successModal.show();
-
-                // 清除 URL 参数
                 successModal._element.addEventListener('hidden.bs.modal', clearUrlParams);
             }
         </script>
@@ -135,20 +161,27 @@ def upload_form():
         </div>
         {% endif %}
 
-        <!-- 引入 Bootstrap 的 JS -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     </body>
     </html>
-    ''', success=success)
+    ''', success=success, taskid=str(uuid.uuid4()))  # 生成唯一的taskid
 
 
 # 上传文件的处理逻辑
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
+    logger.info("Get upload file.")
+    if 'file' not in request.files or 'email' not in request.form:
         return redirect(url_for('upload_form'))
 
     file = request.files['file']
+    email = request.form['email']  # 获取邮箱地址
+    participants = request.form.get('participants', '')  # 获取参会人
+    subject = request.form.get('subject', '')  # 获取会议主题
+    taskid = request.form['taskid']  # 获取taskid
+
+    logger.info("Get upload file filename: %s, email: %s, taskid: %s", file.filename, email, taskid)
+
     if file.filename == '':
         return redirect(url_for('upload_form'))
 
@@ -156,9 +189,21 @@ def upload_file():
     if not allowed_file(file.filename):
         return redirect(url_for('upload_form'))
 
-    # 保存文件
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    # 生成唯一文件名
+    unique_filename = f"{taskid}{os.path.splitext(file.filename)[1]}"
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
     file.save(file_path)
+
+    # 存储邮箱和文件信息
+    uploaded_files[taskid] = {
+        'email': email,
+        'participants': participants.split(','),
+        'subject': subject,
+        'original_filename': file.filename
+    }
+
+    logger.info("Uploaded files dict: %s", uploaded_files)
+
     return redirect(url_for('upload_form', success='true'))
 
 
