@@ -205,11 +205,9 @@ def upload_file():
     processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
     # 处理新的音频文件
     processor.process_meeting_audio(download_url)
-    Util().send_email(email, "会议纪要", "这是根据您上传视频声生成的会议纪要，请查收。", "./result.docx")
-
-
-
-
+    util = Util()
+    util.init()
+    util.send_email(email, "会议纪要", "这是根据您上传视频声生成的会议纪要，请查收。", "./result.docx")
 
     # 存储邮箱和文件信息
     uploaded_files[taskid] = {

@@ -63,6 +63,7 @@ class Util:
         self.mail_api_key = config_dict["MAILGUN"]["api_key"]
         self.mail_url = config_dict["MAILGUN"]["url"]
         self.mail_domain = config_dict["MAILGUN"]["domain"]
+        logger.info("Mail URL: %s", self.mail_url)
         logger.info("Finished config init")
 
     def send_email(self, to_addresses, subject, context, file_path):
