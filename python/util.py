@@ -67,23 +67,14 @@ class Util:
         logger.info("Finished config init")
 
     def send_email(self, to_addresses, subject, context, file_path):
-        if file_path:
-            response = requests.post(
-                self.mail_url,
-                auth=(self.mail_domain, self.mail_api_key),
-                files=[("attachment", open(file_path, "rb"))],  # 添加附件
-                data={"from": "operation@antpool.com",
-                      "to": to_addresses,
-                      "subject": subject,
-                      "text": context})
-        else:
-            response = requests.post(
-                self.mail_url,
-                auth=(self.mail_domain, self.mail_api_key),
-                data={"from": "operation@antpool.com",
-                      "to": to_addresses,
-                      "subject": subject,
-                      "text": context})
+        response = requests.post(
+            self.mail_url,
+            auth=(self.mail_domain, self.mail_api_key),
+            files=[("attachment", open(file_path, "rb"))],  # 添加附件
+            data={"from": "operation@antpool.com",
+                  "to": to_addresses,
+                  "subject": subject,
+                  "text": context})
         logger.info("Call mailgun %s", response.json())
 
 def set_cell_border(cell, top=None, left=None, bottom=None, right=None):
