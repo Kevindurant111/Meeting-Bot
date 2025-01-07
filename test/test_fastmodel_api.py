@@ -43,7 +43,7 @@ def test_oss():
     bucket = oss2.Bucket(auth, endpoint, 'ap-ai01')
 
     # The object key in the bucket is story.txt
-    key = 'story.txt'
+    key = 'story1.txt'
 
     # Upload
     bucket.put_object(key, 'Ali Baba is a happy youth.')

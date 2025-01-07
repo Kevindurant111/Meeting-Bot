@@ -192,20 +192,19 @@ def upload_file():
         return redirect(url_for('upload_form'))
 
     # 生成唯一文件名
-    unique_filename = f"{taskid}{os.path.splitext(file.filename)[1]}"
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(file_path)
 
     # 上传到OSS
-    oss.upload_to_oss("../config.ini", "ap-ai01", unique_filename, file.filename)
-    download_url = oss.get_download_url("../config.ini", "ap-ai01", unique_filename, file.filename)
+    oss.upload_to_oss("../config.ini", "ap-ai01", file.filename, file.filename)
+    download_url = oss.get_download_url("../config.ini", "ap-ai01", file.filename, file.filename)
     logger.info("Upload to oss %s", download_url)
+    time.sleep(5)
 
     # AI解析视频文件
     processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
     # 处理新的音频文件
-    audio_url = "http://ap-ai01.oss-cn-beijing.aliyuncs.com/TcbMeeting.mp3?OSSAccessKeyId=LTAI5tA7t6xe64Y8PdgPmwtg&Expires=37735890886&Signature=68O2em1qHIX1Qsz2ng%2FsX8APQW0%3D"
-    processor.process_meeting_audio(audio_url)
+    processor.process_meeting_audio(download_url)
     Util().send_email(email, "会议纪要", "这是根据您上传视频声生成的会议纪要，请查收。", "./result.docx")
 
 
