@@ -3,13 +3,17 @@ import time
 import logging
 from fastmodels import Client
 from datetime import datetime
-
+from util import *
+import re
 
 class SpeechToTextMeetingProcessor:
     def __init__(self, config_path, log_file="../logs/transcription_log.txt"):
         # 加载配置
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
+
+        self.agent = AIClient(self.config)
+        self.MeetingNotesProcessor = MeetingNotesProcessor("../media/会议纪要-v1.0.1.docx")
 
         # 初始化转录客户端
         self.transcription_client = Client(
@@ -100,7 +104,56 @@ class SpeechToTextMeetingProcessor:
 
         print("转录任务已完成，生成会议纪要...")
         meeting_minutes = self.create_meeting_minutes(task.result)
+
+        meeting_topic = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议主题"}])
+        self.MeetingNotesProcessor._record_content("会议主题", meeting_topic)
+        
+        meeting_time = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议时间"}])
+        self.MeetingNotesProcessor._record_content("会议时间", meeting_time)
+        
+        meeting_host = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议主持人"}])
+        self.MeetingNotesProcessor._record_content("会议主持", meeting_host)
+        print(meeting_host)
+        
+        meeting_point = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议要点"}])
+        self.MeetingNotesProcessor._record_content("会议要点", meeting_point)
+        
+        meeting_conclusion = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议结论"}])
+        self.MeetingNotesProcessor._record_content("会议结论", meeting_conclusion)
+        
+        meeting_p = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我参会人员"}])
+        self.MeetingNotesProcessor._record_content("参会人员", meeting_p)
+        
+        meeting_action = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我行动计划"}])
+        self.parse_and_add_action_items(meeting_action)
+        print(meeting_action)
+
+        self.MeetingNotesProcessor.save()
         return meeting_minutes
+
+    def parse_and_add_action_items(self, text):
+        """
+        解析事项文本并将解析结果通过 add_action_item 函数添加到文档表格中。
+
+        :param text: 包含事项信息的文本
+        """
+        # 定义正则表达式来匹配每一行的内容，以中文逗号为分隔符
+        pattern = r"事项\d+：([^，]+)，负责人：([^，]+)，完成时间：([^；]+)"
+        
+        # 使用正则表达式搜索匹配
+        matches = re.findall(pattern, text)
+        
+        # 遍历匹配的事项信息，调用 add_action_item 插入到表格中
+        for idx, match in enumerate(matches, start=1):
+            item = match[0].strip()  # 事项内容
+            responsible = match[1].strip()  # 负责人
+            deadline = match[2].strip()  # 完成时间
+            
+            # 自动生成 serial_number
+            serial_number = idx
+            
+            # 调用 add_action_item 函数将数据插入到文档表格中
+            self.MeetingNotesProcessor.add_action_item(serial_number, item, responsible, deadline)
 
     def poll_task_by_id(self, task_id, max_retries=1000, wait_interval=5):
         """
@@ -146,23 +199,17 @@ class SpeechToTextMeetingProcessor:
 if __name__ == "__main__":
     processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
     
-    # 通过 task_id 查询任务状态
-    last_task_id = processor.get_last_logged_task_id()
-    if last_task_id:
-        print(f"最后一个记录的任务 ID: {last_task_id}")
-        task_status = processor.get_last_logged_task_status()
-        print(f"最后一个任务的状态: {task_status}")
-    else:
-        print("日志中没有找到任何任务记录。")
+    # # 通过 task_id 查询任务状态
+    # last_task_id = processor.get_last_logged_task_id()
+    # if last_task_id:
+    #     print(f"最后一个记录的任务 ID: {last_task_id}")
+    #     task_status = processor.get_last_logged_task_status()
+    #     print(f"最后一个任务的状态: {task_status}")
+    # else:
+    #     print("日志中没有找到任何任务记录。")
 
     # 处理新的音频文件
-    audio_url = "http://ap-ai01.oss-cn-beijing.aliyuncs.com/TcbMeeting.mp4?OSSAccessKeyId=LTAI5tA7t6xe64Y8PdgPmwtg&Expires=1771890338&Signature=%2FqJCLjGZtRBCoUNt30fDt5MF3qo%3D"
+    audio_url = "http://ap-ai01.oss-cn-beijing.aliyuncs.com/TcbMeeting.mp3?OSSAccessKeyId=LTAI5tA7t6xe64Y8PdgPmwtg&Expires=37735890886&Signature=68O2em1qHIX1Qsz2ng%2FsX8APQW0%3D"
     result = processor.process_meeting_audio(audio_url)
-
-    if result:
-        print("会议纪要生成成功：")
-        print(result)
-    else:
-        print("会议纪要生成失败。")
 
 

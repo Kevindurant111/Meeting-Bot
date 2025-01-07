@@ -2,7 +2,6 @@ from flask import Flask, request, render_template_string, redirect, url_for
 import os
 import uuid  # 用于生成唯一的taskid
 from util import logger
-import oss
 
 app = Flask(__name__)
 
@@ -195,19 +194,12 @@ def upload_file():
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
     file.save(file_path)
 
-    # 上传到OSS
-    oss.upload_to_oss("../config.ini", "ap-ai01", unique_filename, file.filename)
-    download_url = oss.get_download_url("../config.ini", "ap-ai01", unique_filename, file.filename)
-    logger.info("Upload to oss %s", download_url)
-
-
     # 存储邮箱和文件信息
     uploaded_files[taskid] = {
         'email': email,
         'participants': participants.split(','),
         'subject': subject,
-        'original_filename': file.filename,
-        'download_url': download_url,
+        'original_filename': file.filename
     }
 
     logger.info("Uploaded files dict: %s", uploaded_files)
