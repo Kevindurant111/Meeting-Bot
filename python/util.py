@@ -57,9 +57,7 @@ class Util:
 
     def init(self):
         config_dict = configparser.ConfigParser()
-        self.esm_api_key = config_dict["API_KEYS"]["api_key"]
-        self.esm_id = config_dict["API_KEYS"]["easyllm_id"]
-        self.esm_project_id = config_dict["API_KEYS"]["project_id"]
+        config_dict.read("../config.ini")
         self.oss_api_key = config_dict["OSS"]["id"]
         self.oss_api_secret = config_dict["OSS"]["secret"]
         self.mail_api_key = config_dict["MAILGUN"]["api_key"]

@@ -1,7 +1,7 @@
 from flask import Flask, request, render_template_string, redirect, url_for
 import uuid  # 用于生成唯一的taskid
 
-from python.easyllm import SpeechToTextMeetingProcessor
+from easyllm import SpeechToTextMeetingProcessor
 from util import *
 import oss
 
