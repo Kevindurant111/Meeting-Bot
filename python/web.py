@@ -1,7 +1,9 @@
 from flask import Flask, request, render_template_string, redirect, url_for
-import os
 import uuid  # 用于生成唯一的taskid
-from util import logger
+
+from python.easyllm import SpeechToTextMeetingProcessor
+from util import *
+import oss
 
 app = Flask(__name__)
 
@@ -194,12 +196,29 @@ def upload_file():
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
     file.save(file_path)
 
+    # 上传到OSS
+    oss.upload_to_oss("../config.ini", "ap-ai01", unique_filename, file.filename)
+    download_url = oss.get_download_url("../config.ini", "ap-ai01", unique_filename, file.filename)
+    logger.info("Upload to oss %s", download_url)
+
+    # AI解析视频文件
+    processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
+    # 处理新的音频文件
+    audio_url = "http://ap-ai01.oss-cn-beijing.aliyuncs.com/TcbMeeting.mp3?OSSAccessKeyId=LTAI5tA7t6xe64Y8PdgPmwtg&Expires=37735890886&Signature=68O2em1qHIX1Qsz2ng%2FsX8APQW0%3D"
+    processor.process_meeting_audio(audio_url)
+    Util().send_email(email, "会议纪要", "这是根据您上传视频声生成的会议纪要，请查收。", "./result.docx")
+
+
+
+
+
     # 存储邮箱和文件信息
     uploaded_files[taskid] = {
         'email': email,
         'participants': participants.split(','),
         'subject': subject,
-        'original_filename': file.filename
+        'original_filename': file.filename,
+        'download_url': download_url,
     }
 
     logger.info("Uploaded files dict: %s", uploaded_files)

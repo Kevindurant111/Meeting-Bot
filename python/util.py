@@ -5,14 +5,10 @@ import requests
 import logging
 import os
 from docx import Document
-
 import time
 import threading
 from fastmodels import Client
-from pytwitter import Api
 import configparser
-from web3 import Web3
-
 from docx.shared import Pt
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
@@ -160,7 +156,7 @@ class MeetingNotesProcessor:
         保存修改后的文档，并确保文件夹存在。
         """
         # 确保保存目录存在
-        output_path = "modified_" + os.path.basename(self.file_path)
+        output_path = "result.docx"
         output_dir = os.path.dirname(output_path)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir)
