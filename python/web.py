@@ -153,7 +153,7 @@ def upload_form():
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        文件已成功上传！
+                        文件已成功上传，请检查您的邮箱。
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="clearFileInput()">关闭</button>
