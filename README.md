@@ -19,13 +19,25 @@
    ```bash
    git clone https://github.com/yourusername/Meeting-Bot.git
    cd Meeting-Bot
+   
+2. **添加配置**：
+   将服务Key添加到config.ini中。
 
-2. **安装项目依赖**：
+3. **安装项目依赖**：
   ```bash
   pip install -r requirements.txt
 
-3. **启动项目**：
+4. **启动项目**：
 项目基于 Flask 开发，可以通过以下命令启动：
-  ```bash
-  python3 ./python/web.py
+
+   ```bash
+   python3 ./python/web.py
+
 Flask 应用将会在本地启动，默认监听在 http://127.0.0.1:5000/。
+
+## 使用  
+
+- 打开浏览器，访问 http://127.0.0.1:5000，你将看到一个文件上传页面。  
+- 用户可以通过此页面上传会议视频文件（目前支持的文件类型为 .mp4、.wav 等常见视频格式）。  
+- 上传文件后，机器人将开始处理视频，提取音频，进行语音识别，并生成会议纪要。  
+- Meeting-Bot 还支持自动将生成的会议纪要通过电子邮件发送给指定的邮箱。该功能依赖于 Mailgun 服务。
