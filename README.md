@@ -24,15 +24,14 @@
    将服务Key添加到config.ini中。
 
 3. **安装项目依赖**：
-  ```bash
-  pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
    
 4. **启动项目**：
 项目基于 Flask 开发，可以通过以下命令启动：
-
    ```bash
    python3 ./python/web.py
-
+   
 Flask 应用将会在本地启动，默认监听在 http://127.0.0.1:5000/。
 
 ## 使用  
