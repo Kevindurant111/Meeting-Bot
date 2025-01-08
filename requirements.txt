@@ -1,0 +1,8 @@
+Flask
+requests
+fastmodels
+oss2
+easyllm
+docx
+lxml
+configparser
