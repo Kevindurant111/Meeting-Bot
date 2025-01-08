@@ -26,7 +26,7 @@
 3. **安装项目依赖**：
   ```bash
   pip install -r requirements.txt
-
+   
 4. **启动项目**：
 项目基于 Flask 开发，可以通过以下命令启动：
 
