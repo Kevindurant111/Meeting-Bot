@@ -1,6 +1,8 @@
+import ffmpeg
 from flask import Flask, request, render_template_string, redirect, url_for
 import uuid  # 用于生成唯一的taskid
 
+import time
 from easyllm import SpeechToTextMeetingProcessor
 from util import *
 import oss
@@ -191,17 +193,24 @@ def upload_file():
     if not allowed_file(file.filename):
         return redirect(url_for('upload_form'))
 
-    # 生成唯一文件名
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(file_path)
 
+    # 输出音频文件路径
+    audio_name = file.filename.split(".")[0] + ".mp3"
+    audio_path = os.path.join(app.config['UPLOAD_FOLDER'], audio_name)
+    # 使用 ffmpeg-python 提取音频
+    input_node = ffmpeg.input(file_path)
+    input_node.output(audio_path, map='0:a', qscale=0).run()
+    logger.info("Turn video to audio")
+
     # 上传到OSS
-    oss.upload_to_oss("../config.ini", "ap-ai01", file.filename, file.filename)
-    download_url = oss.get_download_url("../config.ini", "ap-ai01", file.filename, file.filename)
+    oss.upload_to_oss("../config.ini", "ap-ai01", audio_name, audio_name)
+    download_url = oss.get_download_url("../config.ini", "ap-ai01", audio_name, audio_name)
     logger.info("Upload to oss %s", download_url)
     time.sleep(5)
 
-    # AI解析视频文件
+    # 初始化AI客户端
     processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
     # 处理新的音频文件
     processor.process_meeting_audio(download_url)

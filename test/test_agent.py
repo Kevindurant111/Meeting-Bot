@@ -1,9 +1,7 @@
-import time
-import threading
-from fastmodels import Client
-from pytwitter import Api
 import configparser
-from web3 import Web3
+
+from fastmodels import Client
+
 
 class AIClient:
     def __init__(self, config):

@@ -1,18 +1,13 @@
 import configparser
-import requests
-
 # log_config.py
 import logging
 import os
+
+import requests
 from docx import Document
-import time
-import threading
-from fastmodels import Client
-import configparser
-from docx.shared import Pt
-from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
-from lxml import etree
+from docx.oxml.ns import qn
+from fastmodels import Client
 
 # 配置日志文件路径
 LOG_DIR = '../logs'  # 日志目录
@@ -222,11 +217,10 @@ class AIClient:
         
         :param config: 配置文件中的参数。
         """
-        self.client = Client(api_key=config['API_KEYS']['agent_api_key'], project_id=config['API_KEYS']['agent_project_id'])
-        self.agent_id_initial = config['API_KEYS']['agent_id_initial']  # 初始代理ID
+        self.client = Client(api_key=config['API_KEYS']['meeting_minutes_api_key'], project_id=config['API_KEYS']['meeting_minutes_project_id'])
         self.thread_id = None
 
-    def create_and_run_agent(self, messages):
+    def create_and_run_agent(self, agent_id_initial, messages):
         """
         创建并运行代理，发送消息并获取回复。
 
@@ -235,32 +229,26 @@ class AIClient:
         :param thread_id: 线程 ID。
         :return: 代理响应内容。
         """
-        if self.thread_id is None:
-            response = self.client.agent.threads.create_and_run(
-                agent_id=self.agent_id_initial,
-                messages=messages
-            )
-            self.thread_id = response.thread_id
-        else:
-            response = self.client.agent.threads.create_and_run(
-                agent_id=self.agent_id_initial,
-                thread_id=self.thread_id,
-                messages=messages
-            )
+        #if self.thread_id is None:
+        response = self.client.agent.threads.create_and_run(
+            agent_id=agent_id_initial,
+            messages=messages
+        )
+        #self.thread_id = response.thread_id
+        # else:
+        #     response = self.client.agent.threads.create_and_run(
+        #         agent_id=agent_id_initial,
+        #         thread_id=self.thread_id,
+        #         messages=messages
+        #     )
 
         return response.content[0].text.value
 
 # 使用示例
 if __name__ == "__main__":
-    file_path = "../media/会议纪要-v1.0.1.docx"
-    processor = MeetingNotesProcessor(file_path)
-
-    # 记录会议主题
-    processor.record_meeting_topic("TCB会议")
-
-    # 记录会议时间
-    processor.record_meeting_time("2025年1月3日 10:00")
-
-    # 添加行动计划
-    processor.add_action_item(1, "会议总结", "张三", "2025年1月5日")
+    config = dict()
+    config['API_KEYS']['meeting_minutes_api_key'] = "MGOhqOj79GXdXhShINo3d_g7n36IMoxgWUn2mJsNbBqjWs4odyl2KDUXgxDgxFWNEqnDSvHSEwiTtTVxZuu5yA"
+    config['API_KEYS']['meeting_minutes_project_id'] = "6PWZcI42BV4skuwfVlmf5n"
+    client = AIClient(config)
+    client.create_and_run_agent("1LlvZTbeCoMV4KLQH7X9l5", )
 

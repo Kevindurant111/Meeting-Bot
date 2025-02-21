@@ -1,14 +1,15 @@
-import configparser
-import time
-import logging
-from fastmodels import Client
-from datetime import datetime
-from util import *
+import json
 import re
+import time
+from datetime import datetime
+
+from python.util import *
+
 
 class SpeechToTextMeetingProcessor:
     def __init__(self, config_path, log_file="../logs/transcription_log.txt"):
         # 加载配置
+        #logger = None
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
 
@@ -21,20 +22,21 @@ class SpeechToTextMeetingProcessor:
             project_id=self.config['API_KEYS']['project_id']
         )
 
-        # 初始化会议纪要客户端
-        self.meeting_minutes_client = Client(
-            api_key=self.config['API_KEYS']['meeting_minutes_api_key'],
-            project_id=self.config['API_KEYS']['meeting_minutes_project_id']
-        )
+        # 初始化AI客户端
+        self.meeting_minutes_client = AIClient(self.config)
+        # self.meeting_minutes_client = Client(
+        #     api_key=self.config['API_KEYS']['meeting_minutes_api_key'],
+        #     project_id=self.config['API_KEYS']['meeting_minutes_project_id']
+        # )
 
-        # 设置日志记录
-        logging.basicConfig(
-            filename=log_file,
-            level=logging.INFO,
-            format="%(asctime)s - %(message)s"
-        )
-        self.logger = logging.getLogger()
-        self.log_file = log_file
+        # 改用统一util.logger
+        # logging.basicConfig(
+        #     filename=log_file,
+        #     level=logging.INFO,
+        #     format="%(asctime)s - %(message)s"
+        # )
+        # logger = logging.getLogger()
+        # self.log_file = log_file
 
     def create_transcription_task(self, audio_url):
         """
@@ -45,7 +47,7 @@ class SpeechToTextMeetingProcessor:
             audio_url=audio_url
         )
         task_id = response.task_id
-        self.logger.info(f"Task created. Task ID: {task_id}, Start Time: {datetime.now()}")
+        logger.info(f"Task created. Task ID: {task_id}, Start Time: {datetime.now()}")
         return task_id
 
     def wait_for_transcription(self, task_id, max_retries=1000, wait_interval=5):
@@ -60,19 +62,19 @@ class SpeechToTextMeetingProcessor:
             print(f"当前状态：{task.status}")
             if task.status != "waiting" and task.status != "doing":
                 end_time = datetime.now()
-                self.logger.info(
+                logger.info(
                     f"Task completed. Task ID: {task_id}, Start Time: {start_time}, "
                     f"End Time: {end_time}, Status: {task.status}"
                 )
                 if task.status == "success":
-                    self.logger.info(f"Transcription Result: {task.result}")
+                    logger.info(f"Transcription Result: {task.result}")
                 return task
             retries += 1
             time.sleep(wait_interval)
 
         # 超时未完成
         end_time = datetime.now()
-        self.logger.info(
+        logger.info(
             f"Task timeout. Task ID: {task_id}, Start Time: {start_time}, "
             f"End Time: {end_time}, Status: timeout"
         )
@@ -82,11 +84,11 @@ class SpeechToTextMeetingProcessor:
         """
         调用会议纪要生成接口。
         """
-        response = self.meeting_minutes_client.easyllm.meeting_minutes.create(
-            easyllm_id=self.config['API_KEYS']['meeting_minutes_easyllm_id'],
-            meeting_transcript=transcript
+        response = self.meeting_minutes_client.create_and_run_agent(
+            self.config["API_KEYS"]["meeting_minutes_initial"],
+            transcript
         )
-        return response.choices[0].message.content
+        return response
 
     def process_meeting_audio(self, audio_url):
         """
@@ -103,30 +105,52 @@ class SpeechToTextMeetingProcessor:
             return None
 
         print("转录任务已完成，生成会议纪要...")
-        meeting_minutes = self.create_meeting_minutes(task.result)
+        message = {"role": "user", "content": task.result}
+        messages = [message]
+        meeting_minutes = self.meeting_minutes_client.create_and_run_agent(
+            self.config["API_KEYS"]["meeting_minutes_initial"],
+            messages
+        )
+        #meeting_minutes = self.create_meeting_minutes(task.result)
+        logger.info("minutes: %s", meeting_minutes)
+        # 找到第一个 "{" 和最后一个 "}"
+        start = meeting_minutes.find("{")  # 第一个 "{" 的索引
+        end = meeting_minutes.rfind("}")   # 最后一个 "}" 的索引
 
-        meeting_topic = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议主题"}])
-        self.MeetingNotesProcessor._record_content("会议主题", meeting_topic)
-        
-        meeting_time = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议时间"}])
-        self.MeetingNotesProcessor._record_content("会议时间", meeting_time)
-        
-        meeting_host = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议主持人"}])
-        self.MeetingNotesProcessor._record_content("会议主持", meeting_host)
-        print(meeting_host)
-        
-        meeting_point = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议要点"}])
-        self.MeetingNotesProcessor._record_content("会议要点", meeting_point)
-        
-        meeting_conclusion = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议结论"}])
-        self.MeetingNotesProcessor._record_content("会议结论", meeting_conclusion)
-        
-        meeting_p = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我参会人员"}])
-        self.MeetingNotesProcessor._record_content("参会人员", meeting_p)
-        
-        meeting_action = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我行动计划"}])
-        self.parse_and_add_action_items(meeting_action)
-        print(meeting_action)
+        # 提取第一个 "{" 和最后一个 "}" 之间的内容
+        if start != -1 and end != -1:  # 确保 "{" 和 "}" 存在
+            meeting_minutes = meeting_minutes[start:end + 1]
+        else:
+            meeting_minutes = ""  # 如果没有找到 "{" 或 "}"，返回空字符串
+        meeting_minutes_dict = json.loads(meeting_minutes)
+        print(";".join(map(str, meeting_minutes_dict["行动计划"])))
+        self.MeetingNotesProcessor._record_content("会议主题", meeting_minutes_dict["会议主题"])
+        self.MeetingNotesProcessor._record_content("会议主持", meeting_minutes_dict["会议主持人"])
+        self.MeetingNotesProcessor._record_content("会议要点", ",".join(map(str, meeting_minutes_dict["会议要点"])))
+        self.MeetingNotesProcessor._record_content("会议结论", ",".join(map(str, meeting_minutes_dict["会议结论"])))
+        self.MeetingNotesProcessor._record_content("参会人员", ",".join(map(str, meeting_minutes_dict["参会人员"])))
+        self.parse_and_add_action_items(";".join(map(str, meeting_minutes_dict["行动计划"])))
+        # meeting_topic = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议主题"}])s
+        # self.MeetingNotesProcessor._record_content("会议主题", meeting_topic)
+        #
+        # meeting_time = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议时间"}])
+        # self.MeetingNotesProcessor._record_content("会议时间", meeting_time)
+        #
+        # meeting_host = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议主持人"}])
+        # self.MeetingNotesProcessor._record_content("会议主持", meeting_host)
+        #
+        # meeting_point = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议要点"}])
+        # self.MeetingNotesProcessor._record_content("会议要点", meeting_point)
+        #
+        # meeting_conclusion = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议结论"}])
+        # self.MeetingNotesProcessor._record_content("会议结论", meeting_conclusion)
+        #
+        # meeting_p = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我参会人员"}])
+        # self.MeetingNotesProcessor._record_content("参会人员", meeting_p)
+        #
+        # meeting_action = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我行动计划"}])
+        # logger.info("行动计划: %s", meeting_action)
+        # self.parse_and_add_action_items(meeting_action)
 
         self.MeetingNotesProcessor.save()
         return meeting_minutes
@@ -138,7 +162,9 @@ class SpeechToTextMeetingProcessor:
         :param text: 包含事项信息的文本
         """
         # 定义正则表达式来匹配每一行的内容，以中文逗号为分隔符
-        pattern = r"事项\d+：([^，]+)，负责人：([^，]+)，完成时间：([^；]+)"
+        #attern = r"\d+：([^，]+)，负责人：([^，]+)，完成时间：([^;]+)"
+        #pattern = r"([^，]+)，负责人：([^，]+)，完成时间：([^;]+)"
+        pattern = r"(?:^|;)\s*([^，]+)，负责人：([^，]+)，完成时间：([^;]+)"
         
         # 使用正则表达式搜索匹配
         matches = re.findall(pattern, text)
