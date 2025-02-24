@@ -136,10 +136,12 @@ class SpeechToTextMeetingProcessor:
         # If questions need to be generated, trigger that process
         if generate_questions:
             print("Generating questions from the meeting minutes...")
-            if meeting_content_path is None:
-                questions = self.generate_questions_from_meeting(task.result)
-            else:
-                questions = self.generate_questions_from_meeting(meeting_content)
+
+            questions = self.generate_questions_from_meeting(meeting_minutes)
+            # if meeting_content_path is None:
+            #     questions = self.generate_questions_from_meeting(task.result)
+            # else:
+            #     questions = self.generate_questions_from_meeting(meeting_content)
 
             # 保存 questions 到文本文件
             with open('questions.txt', 'w', encoding='utf-8') as file:
