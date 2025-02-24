@@ -211,36 +211,36 @@ class MeetingNotesProcessor:
                     break  # 找到后就退出循环
 
 class AIClient:
-    def __init__(self, config):
+    def __init__(self, api_key, project_id):
         """
-        初始化 AI 客户端，连接到 fastmodels API。
+        Initialize AI client and connect to the fastmodels API.
         
-        :param config: 配置文件中的参数。
+        :param api_key: API key for authentication.
+        :param project_id: Project ID for the fastmodels API.
         """
-        self.client = Client(api_key=config['API_KEYS']['meeting_minutes_api_key'], project_id=config['API_KEYS']['meeting_minutes_project_id'])
+        self.client = Client(api_key=api_key, project_id=project_id)
         self.thread_id = None
 
     def create_and_run_agent(self, agent_id_initial, messages):
         """
-        创建并运行代理，发送消息并获取回复。
+        Create and run agent, send messages and receive a reply.
 
-        :param agent_id: 代理 ID。
-        :param messages: 用户消息列表。
-        :param thread_id: 线程 ID。
-        :return: 代理响应内容。
+        :param agent_id_initial: Agent ID.
+        :param messages: List of user messages.
+        :return: Response content from the agent.
         """
-        #if self.thread_id is None:
-        response = self.client.agent.threads.create_and_run(
-            agent_id=agent_id_initial,
-            messages=messages
-        )
-        #self.thread_id = response.thread_id
-        # else:
-        #     response = self.client.agent.threads.create_and_run(
-        #         agent_id=agent_id_initial,
-        #         thread_id=self.thread_id,
-        #         messages=messages
-        #     )
+        if self.thread_id is None:
+            response = self.client.agent.threads.create_and_run(
+                agent_id=agent_id_initial,
+                messages=messages
+            )
+            self.thread_id = response.thread_id
+        else:
+            response = self.client.agent.threads.create_and_run(
+                agent_id=agent_id_initial,
+                thread_id=self.thread_id,
+                messages=messages
+            )
 
         return response.content[0].text.value
 

@@ -2,9 +2,8 @@ import json
 import re
 import time
 from datetime import datetime
-
-from python.util import *
-
+# from python.util import *
+from util import *
 
 class SpeechToTextMeetingProcessor:
     def __init__(self, config_path, log_file="../logs/transcription_log.txt"):
@@ -13,7 +12,6 @@ class SpeechToTextMeetingProcessor:
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
 
-        self.agent = AIClient(self.config)
         self.MeetingNotesProcessor = MeetingNotesProcessor("../media/会议纪要-v1.0.1.docx")
 
         # 初始化转录客户端
@@ -22,21 +20,11 @@ class SpeechToTextMeetingProcessor:
             project_id=self.config['API_KEYS']['project_id']
         )
 
-        # 初始化AI客户端
-        self.meeting_minutes_client = AIClient(self.config)
-        # self.meeting_minutes_client = Client(
-        #     api_key=self.config['API_KEYS']['meeting_minutes_api_key'],
-        #     project_id=self.config['API_KEYS']['meeting_minutes_project_id']
-        # )
+        # 初始化AI总结会议纪要客户端
+        self.meeting_minutes_client = AIClient(self.config['API_KEYS']['meeting_minutes_api_key'], self.config['API_KEYS']['meeting_minutes_project_id'])
 
-        # 改用统一util.logger
-        # logging.basicConfig(
-        #     filename=log_file,
-        #     level=logging.INFO,
-        #     format="%(asctime)s - %(message)s"
-        # )
-        # logger = logging.getLogger()
-        # self.log_file = log_file
+        # 初始化AI出题客户端
+        self.meeting_question_client = AIClient(self.config['API_KEYS']['meeting_minutes_api_key'], self.config['API_KEYS']['meeting_minutes_project_id'])
 
     def create_transcription_task(self, audio_url):
         """
@@ -90,7 +78,7 @@ class SpeechToTextMeetingProcessor:
         )
         return response
 
-    def process_meeting_audio(self, audio_url):
+    def process_meeting_audio(self, audio_url, generate_questions=False):
         """
         主流程：处理会议音频。
         """
@@ -111,7 +99,7 @@ class SpeechToTextMeetingProcessor:
             self.config["API_KEYS"]["meeting_minutes_initial"],
             messages
         )
-        #meeting_minutes = self.create_meeting_minutes(task.result)
+        #meeting_minutes = self.create_meeting_minutes(task.result) # 停用直接使用固定模型总结会议纪要的方式，改为使用Agent定制化
         logger.info("minutes: %s", meeting_minutes)
         # 找到第一个 "{" 和最后一个 "}"
         start = meeting_minutes.find("{")  # 第一个 "{" 的索引
@@ -153,7 +141,28 @@ class SpeechToTextMeetingProcessor:
         # self.parse_and_add_action_items(meeting_action)
 
         self.MeetingNotesProcessor.save()
+
+        # If questions need to be generated, trigger that process
+        if generate_questions:
+            print("Generating questions from the meeting minutes...")
+            questions = self.generate_questions_from_meeting(task.result)
+
         return meeting_minutes
+
+    def generate_questions_from_meeting(self, meeting_content):
+        """
+        Generate relevant questions based on the meeting content.
+        :return: String containing generated questions
+        """
+        message = {"role": "user", "content": '这一段是会议内容: ' + meeting_content}
+        messages = [message]
+        meeting_questions = self.meeting_question_client.create_and_run_agent(
+            self.config["API_KEYS"]["meeting_question_initial"],
+            messages
+        )
+        print(meeting_questions)
+    
+
 
     def parse_and_add_action_items(self, text):
         """
@@ -219,8 +228,6 @@ class SpeechToTextMeetingProcessor:
             print(f"任务 {last_task_id} 查询失败或超时。")
             return None
 
-
-
 # 使用示例
 if __name__ == "__main__":
     processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
@@ -235,7 +242,7 @@ if __name__ == "__main__":
     #     print("日志中没有找到任何任务记录。")
 
     # 处理新的音频文件
-    audio_url = "http://ap-ai01.oss-cn-beijing.aliyuncs.com/TcbMeeting.mp3?OSSAccessKeyId=LTAI5tA7t6xe64Y8PdgPmwtg&Expires=37735890886&Signature=68O2em1qHIX1Qsz2ng%2FsX8APQW0%3D"
-    result = processor.process_meeting_audio(audio_url)
+    audio_url = "http://ap-ai01.oss-cn-beijing.aliyuncs.com/TcbMeeting.mp4?OSSAccessKeyId=LTAI5tA7t6xe64Y8PdgPmwtg&Expires=5340365400&Signature=19NZB41dYqDVlhw4dFvou%2FZUFYA%3D"
+    result = processor.process_meeting_audio(audio_url, True)
 
 
