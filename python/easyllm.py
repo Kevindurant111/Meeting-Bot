@@ -78,23 +78,36 @@ class SpeechToTextMeetingProcessor:
         )
         return response
 
-    def process_meeting_audio(self, audio_url, generate_questions=False):
+    def process_meeting_audio(self, audio_url, generate_questions=False, meeting_content_path=None):
         """
         主流程：处理会议音频。
         """
-        print("创建转录任务...")
-        task_id = self.create_transcription_task(audio_url)
+        if meeting_content_path is None:
+            print("创建转录任务...")
+            task_id = self.create_transcription_task(audio_url)
 
-        print("等待转录任务完成...")
-        task = self.wait_for_transcription(task_id)
+            print("等待转录任务完成...")
+            task = self.wait_for_transcription(task_id)
 
-        if task is None or task.status != "success":
-            print("任务未成功完成。")
-            return None
+            if task is None or task.status != "success":
+                print("任务未成功完成。")
+                return None
 
-        print("转录任务已完成，生成会议纪要...")
-        message = {"role": "user", "content": task.result}
-        messages = [message]
+            print("转录任务已完成，生成会议纪要...")
+
+            # 保存会议内容到文本文件
+            with open('meeting_content.txt', 'w', encoding='utf-8') as file:
+                file.write(task.result + '\n')
+            print("meeting_content have been saved to meeting_content.txt")
+
+            message = {"role": "user", "content": task.result}
+            messages = [message]
+        else:
+            with open(meeting_content_path, 'r', encoding='utf-8') as file:
+                meeting_content = file.read()  # 读取文件的每一行
+            print(meeting_content)
+            message = {"role": "user", "content": meeting_content}
+            messages = [message]    
         meeting_minutes = self.meeting_minutes_client.create_and_run_agent(
             self.config["API_KEYS"]["meeting_minutes_initial"],
             messages
@@ -118,34 +131,20 @@ class SpeechToTextMeetingProcessor:
         self.MeetingNotesProcessor._record_content("会议结论", ",".join(map(str, meeting_minutes_dict["会议结论"])))
         self.MeetingNotesProcessor._record_content("参会人员", ",".join(map(str, meeting_minutes_dict["参会人员"])))
         self.parse_and_add_action_items(";".join(map(str, meeting_minutes_dict["行动计划"])))
-        # meeting_topic = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议主题"}])s
-        # self.MeetingNotesProcessor._record_content("会议主题", meeting_topic)
-        #
-        # meeting_time = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议时间"}])
-        # self.MeetingNotesProcessor._record_content("会议时间", meeting_time)
-        #
-        # meeting_host = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议主持人"}])
-        # self.MeetingNotesProcessor._record_content("会议主持", meeting_host)
-        #
-        # meeting_point = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议要点"}])
-        # self.MeetingNotesProcessor._record_content("会议要点", meeting_point)
-        #
-        # meeting_conclusion = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我会议结论"}])
-        # self.MeetingNotesProcessor._record_content("会议结论", meeting_conclusion)
-        #
-        # meeting_p = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我参会人员"}])
-        # self.MeetingNotesProcessor._record_content("参会人员", meeting_p)
-        #
-        # meeting_action = self.agent.create_and_run_agent(messages=[{"role": "user", "content": meeting_minutes + ", 告诉我行动计划"}])
-        # logger.info("行动计划: %s", meeting_action)
-        # self.parse_and_add_action_items(meeting_action)
-
         self.MeetingNotesProcessor.save()
 
         # If questions need to be generated, trigger that process
         if generate_questions:
             print("Generating questions from the meeting minutes...")
-            questions = self.generate_questions_from_meeting(task.result)
+            if meeting_content_path is None:
+                questions = self.generate_questions_from_meeting(task.result)
+            else:
+                questions = self.generate_questions_from_meeting(meeting_content)
+
+            # 保存 questions 到文本文件
+            with open('questions.txt', 'w', encoding='utf-8') as file:
+                file.write(questions + '\n')
+            print("Questions have been saved to questions.txt")
 
         return meeting_minutes
 
@@ -160,10 +159,8 @@ class SpeechToTextMeetingProcessor:
             self.config["API_KEYS"]["meeting_question_initial"],
             messages
         )
-        print(meeting_questions)
+        return meeting_questions
     
-
-
     def parse_and_add_action_items(self, text):
         """
         解析事项文本并将解析结果通过 add_action_item 函数添加到文档表格中。
@@ -231,18 +228,7 @@ class SpeechToTextMeetingProcessor:
 # 使用示例
 if __name__ == "__main__":
     processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
-    
-    # # 通过 task_id 查询任务状态
-    # last_task_id = processor.get_last_logged_task_id()
-    # if last_task_id:
-    #     print(f"最后一个记录的任务 ID: {last_task_id}")
-    #     task_status = processor.get_last_logged_task_status()
-    #     print(f"最后一个任务的状态: {task_status}")
-    # else:
-    #     print("日志中没有找到任何任务记录。")
-
-    # 处理新的音频文件
     audio_url = "http://ap-ai01.oss-cn-beijing.aliyuncs.com/TcbMeeting.mp4?OSSAccessKeyId=LTAI5tA7t6xe64Y8PdgPmwtg&Expires=5340365400&Signature=19NZB41dYqDVlhw4dFvou%2FZUFYA%3D"
-    result = processor.process_meeting_audio(audio_url, True)
+    result = processor.process_meeting_audio(audio_url, True, './meeting_content.txt')
 
 

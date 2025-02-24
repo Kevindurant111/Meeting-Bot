@@ -190,33 +190,49 @@ def upload_file():
         return redirect(url_for('upload_form'))
 
     # 检查文件格式是否符合要求
-    if not allowed_file(file.filename):
+    if not allowed_file(file.filename) and file.filename != 'meeting_content.txt':
         return redirect(url_for('upload_form'))
 
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(file_path)
 
-    # 输出音频文件路径
-    audio_name = file.filename.split(".")[0] + ".mp3"
-    audio_path = os.path.join(app.config['UPLOAD_FOLDER'], audio_name)
-    # 使用 ffmpeg-python 提取音频
-    input_node = ffmpeg.input(file_path)
-    input_node.output(audio_path, map='0:a', qscale=0).run()
-    logger.info("Turn video to audio")
+    if file.filename != 'meeting_content.txt':
+        # 输出音频文件路径
+        audio_name = file.filename.split(".")[0] + ".mp3"
+        audio_path = os.path.join(app.config['UPLOAD_FOLDER'], audio_name)
+        # 使用 ffmpeg-python 提取音频
+        input_node = ffmpeg.input(file_path)
+        input_node.output(audio_path, map='0:a', qscale=0).run()
+        logger.info("Turn video to audio")
 
-    # 上传到OSS
-    oss.upload_to_oss("../config.ini", "ap-ai01", audio_name, audio_name)
-    download_url = oss.get_download_url("../config.ini", "ap-ai01", audio_name, audio_name)
-    logger.info("Upload to oss %s", download_url)
-    time.sleep(5)
+        # 上传到OSS
+        oss.upload_to_oss("../config.ini", "ap-ai01", audio_name, audio_name)
+        download_url = oss.get_download_url("../config.ini", "ap-ai01", audio_name, audio_name)
+        logger.info("Upload to oss %s", download_url)
+        time.sleep(5)
 
-    # 初始化AI客户端
-    processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
-    # 处理新的音频文件
-    processor.process_meeting_audio(download_url)
-    util = Util()
-    util.init()
-    util.send_email(email, "会议纪要", "这是根据您上传视频生成的会议纪要，请查收。", "./result.docx")
+        # 初始化AI客户端
+        processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
+        # 处理新的音频文件
+        set_generate_questions = True
+        processor.process_meeting_audio(download_url, generate_questions = set_generate_questions)
+        util = Util()
+        util.init()
+        util.send_email(email, "会议内容", "这是根据您上传视频生成的会议内容，请查收。", "./meeting_content.txt")
+        util.send_email(email, "会议纪要", "这是根据您上传视频生成的会议纪要，请查收。", "./result.docx")
+        if set_generate_questions:
+            util.send_email(email, "会议问卷题目", "这是根据您上传视频生成的会议问卷题目，请查收。", "./questions.txt")
+    else:
+        # 初始化AI客户端
+        processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
+        # 处理新的音频文件
+        set_generate_questions = True
+        processor.process_meeting_audio(download_url, generate_questions = set_generate_questions, meeting_content_path=file.filename)
+        util = Util()
+        util.init()
+        util.send_email(email, "会议纪要", "这是根据您上传视频生成的会议纪要，请查收。", "./result.docx")
+        if set_generate_questions:
+            util.send_email(email, "会议问卷题目", "这是根据您上传视频生成的会议问卷题目，请查收。", "./questions.txt")
 
     # 存储邮箱和文件信息
     uploaded_files[taskid] = {
