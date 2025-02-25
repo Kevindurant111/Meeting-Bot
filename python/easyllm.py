@@ -2,13 +2,11 @@ import json
 import re
 import time
 from datetime import datetime
-# from python.util import *
 from python.util import *
 
 class SpeechToTextMeetingProcessor:
     def __init__(self, config_path, log_file="../logs/transcription_log.txt"):
         # 加载配置
-        #logger = None
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
 
@@ -20,8 +18,12 @@ class SpeechToTextMeetingProcessor:
             project_id=self.config['API_KEYS']['project_id']
         )
 
-        # 初始化AI总结会议纪要客户端
+        self.use_chat_completions_for_meeting_minutes = True
+        # 初始化AI Agent总结会议纪要客户端
         self.meeting_minutes_client = AIClient(self.config['API_KEYS']['meeting_minutes_api_key'], self.config['API_KEYS']['meeting_minutes_project_id'])
+
+        # 初始化AI Chat总结会议纪要客户端
+        self.meeting_minutes_chat = ChatCompletionsClient(self.config['API_KEYS']['meeting_minutes_api_key'], self.config['API_KEYS']['meeting_minutes_project_id'])
 
         # 初始化AI出题客户端
         self.meeting_question_client = AIClient(self.config['API_KEYS']['meeting_minutes_api_key'], self.config['API_KEYS']['meeting_minutes_project_id'])
@@ -122,13 +124,47 @@ class SpeechToTextMeetingProcessor:
         else:
             with open(meeting_content_path, 'r', encoding='utf-8') as file:
                 meeting_content = file.read()  # 读取文件的每一行
-            print(meeting_content)
+
+        if self.use_chat_completions_for_meeting_minutes:
+            messages = [{"role": "system", "content": '''
+                我是一个会议纪要机器人，会议的主体是对主管进行企业文化培训，你可以把会议内容发给我，我可以从中提取出：会议主题（不超过十个字，例如TCB撰写研讨会)，会议主持人，会议要点（最少2条），会议结论（简洁准确，分点写），参会人员，以及行动计划（格式为类似：事项1： 写文档，负责人：小A，完成时间：2024.12.30； 事项2： 写代码，负责人：小B，完成时间：2024.12.30）。对于我不知道的内容，我会以未知来回复。
+                并将结果严格按照如下示例json格式输出：
+                {
+                    "会议主题": "XX",
+                    "会议主持人": "XX",
+                    "会议要点": [
+                        "XX",
+                        "XX",
+                        "XX"
+                    ],
+                    "会议结论": [
+                        "XX",
+                        "XX"
+                    ],
+                    "参会人员": [
+                        "XX",
+                        "XX"
+                    ],
+                    "行动计划": [
+                        "XX，负责人：XX，完成时间：XX",
+                        "XX，负责人：XX，完成时间：XX"
+                    ]
+                }
+                注意上面作为格式参考，格式必须严格遵守上面的格式，尤其是行动计划，必须是事项、负责人：、完成时间：。同时内容要尽可能的丰富，字数在500以上。        
+            '''}, 
+            {"role": "user", "content": meeting_content}]  
+                
+            meeting_minutes = self.meeting_minutes_chat.create_chat_completion(
+                self.config["API_KEYS"]["chat_completions_initial"],
+                messages
+            )
+        else:
             message = {"role": "user", "content": meeting_content}
             messages = [message]    
-        meeting_minutes = self.meeting_minutes_client.create_and_run_agent(
-            self.config["API_KEYS"]["meeting_minutes_initial"],
-            messages
-        )
+            meeting_minutes = self.meeting_minutes_client.create_and_run_agent(
+                self.config["API_KEYS"]["meeting_minutes_initial"],
+                messages
+            )
         #meeting_minutes = self.create_meeting_minutes(task.result) # 停用直接使用固定模型总结会议纪要的方式，改为使用Agent定制化
         logger.info("minutes: %s", meeting_minutes)
         # 找到第一个 "{" 和最后一个 "}"
@@ -154,15 +190,26 @@ class SpeechToTextMeetingProcessor:
         if generate_questions:
             print("Generating questions from the meeting minutes...")
 
-            questions = self.generate_questions_from_meeting(meeting_minutes)
-            # if meeting_content_path is None:
-            #     questions = self.generate_questions_from_meeting(task.result)
-            # else:
-            #     questions = self.generate_questions_from_meeting(meeting_content)
+            file_path = "questions.txt"
 
-            # 保存 questions 到文本文件
-            with open('questions.txt', 'w', encoding='utf-8') as file:
-                file.write(questions + '\n')
+            # Delete the file if it already exists
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+            # Generate different types of questions and append them to the file
+            question_types = [
+                "单选题2道: ",
+                "多选题2道: ",
+                "判断题2道: ",
+                "填空题2道: "
+            ]
+
+            with open(file_path, "a", encoding="utf-8") as file:
+                for q_type in question_types:
+                    questions = self.generate_questions_from_meeting(q_type + meeting_minutes)
+                    time.sleep(5)
+                    file.write(questions + "\n")
+
             print("Questions have been saved to questions.txt")
 
         return meeting_minutes

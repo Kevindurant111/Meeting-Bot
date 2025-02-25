@@ -244,6 +244,31 @@ class AIClient:
 
         return response.content[0].text.value
 
+
+class ChatCompletionsClient:
+    def __init__(self, api_key, project_id):
+        """
+        Initialize the chat completions client and connect to the fastmodels API.
+
+        :param api_key: API key for authentication.
+        :param project_id: Project ID for the fastmodels API.
+        """
+        self.client = Client(api_key=api_key, project_id=project_id)
+
+    def create_chat_completion(self, model_id, messages):
+        """
+        Create a chat completion request and return the response.
+
+        :param model_id: The model ID to be used for the chat completion.
+        :param messages: A list of message dictionaries with role and content.
+        :return: The assistant's reply.
+        """
+        response = self.client.chat.completions.create(
+            model_id=model_id,
+            messages=messages
+        )
+        return response.choices[0].message.content
+
 # 使用示例
 if __name__ == "__main__":
     config = dict()
