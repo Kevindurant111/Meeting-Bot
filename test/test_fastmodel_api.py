@@ -45,11 +45,12 @@ def test_oss():
     auth = oss2.Auth(config['OSS']['id'], config['OSS']['secret'])
     bucket = oss2.Bucket(auth, endpoint, 'ap-ai01')
 
-    # The object key in the bucket is story.txt
-    key = 'story1.txt'
+    for i in range(10):
+        filename = f"20250222110619-36期主管培训-视频-1_{i + 1}.mp3"
+        # 上传内容
+        result = bucket.put_object_from_file(filename, "..\\upload\\" + filename)
+        time.sleep(5)
 
-    # Upload
-    bucket.put_object(key, 'Ali Baba is a happy youth.')
 
     # Download
     # bucket.get_object(key).read()
@@ -78,7 +79,7 @@ def test_process():
     processor = SpeechToTextMeetingProcessor(config_path="../config.ini")
     # 处理新的音频文件
     processor.process_meeting_audio(
-        "https://ap-ai01.oss-cn-beijing.aliyuncs.com/%E6%8D%A2%E5%B2%97POTA%20EITZ%20PMT-1%E6%9C%88-%E9%82%A2%E6%94%BF%E5%A5%87-%E9%A6%96%E6%AC%A1.mp3?Expires=1740151796&OSSAccessKeyId=TMP.3KdXrMgcmtfiY6omahaPzngC5SD5KQXuxGZb4p1fasNwrgL2fVKkTKF28L4M5bQ3fnBLEEqWWShkH2kozgJFts1xBbHbGU&Signature=31yd5AKAi96dcDt02xzp5gWHbCE%3D")
+        "https://ap-ai01.oss-cn-beijing.aliyuncs.com/20250222110619-36%E6%9C%9F%E4%B8%BB%E7%AE%A1%E5%9F%B9%E8%AE%AD-%E8%A7%86%E9%A2%91-1.mp3?Expires=1740419176&OSSAccessKeyId=TMP.3KkRZgLMDyBctAz6a4UF7H47LDBdFTFS5wwmEQcZuuAXQm17RJaTrcjZPJhJfxbxS7286b8D8xPiefZkCz8gUNYYVypPh8&Signature=2omYPxOXvdi6YLKNqCujX%2Fn7nXk%3D")
     # util = Util()
     # util.init()
     # util.send_email("nilszhang001@gmail.com", "会议纪要", "这是根据您上传视频生成的会议纪要，请查收。", "./result.docx")

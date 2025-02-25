@@ -3,7 +3,7 @@ import re
 import time
 from datetime import datetime
 # from python.util import *
-from util import *
+from python.util import *
 
 class SpeechToTextMeetingProcessor:
     def __init__(self, config_path, log_file="../logs/transcription_log.txt"):
@@ -78,29 +78,46 @@ class SpeechToTextMeetingProcessor:
         )
         return response
 
-    def process_meeting_audio(self, audio_url, generate_questions=False, meeting_content_path=None):
+    def process_meeting_audio(self, audio_urls, generate_questions=False, meeting_content_path=None):
         """
         主流程：处理会议音频。
         """
+        meeting_content = ""  # 用于存储所有拼接的转录内容
+
         if meeting_content_path is None:
             print("创建转录任务...")
-            task_id = self.create_transcription_task(audio_url)
 
-            print("等待转录任务完成...")
-            task = self.wait_for_transcription(task_id)
+            # 遍历 audio_urls 数组，逐个处理音频
+            for idx, audio_url in enumerate(audio_urls):
+                print(f"正在处理第 {idx + 1} 个音频: {audio_url}")
 
-            if task is None or task.status != "success":
-                print("任务未成功完成。")
+                # 创建转录任务
+                task_id = self.create_transcription_task(audio_url)
+
+                print("等待转录任务完成...")
+                task = self.wait_for_transcription(task_id)
+
+                if task is None or task.status != "success":
+                    print(f"第 {idx + 1} 个音频任务未成功完成，跳过。")
+                    continue
+
+                print(f"第 {idx + 1} 个音频转录任务已完成。")
+
+                # 拼接转录结果到 meeting_content
+                meeting_content += task.result + "\n"
+
+            if not meeting_content.strip():
+                print("所有音频任务均未成功完成。")
                 return None
 
-            print("转录任务已完成，生成会议纪要...")
+            print("所有音频转录任务已完成，生成会议纪要...")
 
             # 保存会议内容到文本文件
             with open('meeting_content.txt', 'w', encoding='utf-8') as file:
-                file.write(task.result + '\n')
-            print("meeting_content have been saved to meeting_content.txt")
+                file.write(meeting_content)
+            print("meeting_content 已保存到 meeting_content.txt")
 
-            message = {"role": "user", "content": task.result}
+            message = {"role": "user", "content": meeting_content}
             messages = [message]
         else:
             with open(meeting_content_path, 'r', encoding='utf-8') as file:

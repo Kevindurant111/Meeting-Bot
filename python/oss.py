@@ -1,5 +1,6 @@
 import oss2
 import configparser
+import os
 
 def upload_to_oss(config_path, bucket_name, object_key, filename):
     """
@@ -24,7 +25,7 @@ def upload_to_oss(config_path, bucket_name, object_key, filename):
         bucket = oss2.Bucket(auth, endpoint, bucket_name)
 
         # 上传内容
-        result = bucket.put_object_from_file(filename, "../upload/" + filename)
+        result = bucket.put_object_from_file(filename, os.path.join("..", "upload", filename))
 
         # 确认上传成功
         if result.status == 200:
