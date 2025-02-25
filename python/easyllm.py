@@ -146,11 +146,13 @@ class SpeechToTextMeetingProcessor:
                         "XX"
                     ],
                     "行动计划": [
-                        "XX, 负责人: XX, 完成时间: XX",
-                        "XX,负责人: XX, 完成时间: XX"
+                        "[事项][负责人][完成时间]",
+                        "[事项][负责人][完成时间]"
                     ]
                 }
-                注意上面作为格式参考,格式必须严格遵守上面的格式,尤其是行动计划, 必须是事项、负责人: 、完成时间: 。同时内容要尽可能的丰富，字数在500以上。        
+                注意上面作为格式参考,格式必须严格遵守上面的格式,尤其是行动计划, 必须是[事项][负责人][完成时间], 注意带括号, 这对于我后面的解析很重要。同时内容要尽可能的丰富, 
+                会议要点, 会议结论与行动计划各不少于8条, 每条字数在30以上。
+                不要胡编乱造, 要实事求是。        
             '''}, 
             {"role": "user", "content": meeting_content}]  
                 
@@ -233,23 +235,21 @@ class SpeechToTextMeetingProcessor:
 
         :param text: 包含事项信息的文本
         """
-        # 定义正则表达式来匹配每一行的内容，以中文逗号为分隔符
-        #attern = r"\d+：([^，]+)，负责人：([^，]+)，完成时间：([^;]+)"
-        #pattern = r"([^，]+)，负责人：([^，]+)，完成时间：([^;]+)"
-        pattern = r"(?:^|;)\s*([^, ]+)，负责人：([^, ]+)，完成时间：([^;]+)"
-        
+        # 定义正则表达式来匹配 [事项][负责人][完成时间] 格式
+        pattern = r"\[([^]]+)]\s*\[\s*([^]]+)]\s*\[\s*([^]]+)]"
+
         # 使用正则表达式搜索匹配
         matches = re.findall(pattern, text)
-        
+
         # 遍历匹配的事项信息，调用 add_action_item 插入到表格中
         for idx, match in enumerate(matches, start=1):
             item = match[0].strip()  # 事项内容
             responsible = match[1].strip()  # 负责人
             deadline = match[2].strip()  # 完成时间
-            
+
             # 自动生成 serial_number
             serial_number = idx
-            
+
             # 调用 add_action_item 函数将数据插入到文档表格中
             self.MeetingNotesProcessor.add_action_item(serial_number, item, responsible, deadline)
 
